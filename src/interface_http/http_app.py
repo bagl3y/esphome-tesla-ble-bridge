@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from domain.state import state
+from src.domain.state import state
 
 app = FastAPI(title="Tesla BLE Bridge", version="0.1.0")
 
@@ -11,7 +11,7 @@ def _lookup_key(oid: str):
 
 @app.get("/state/{name}")
 async def get_state(name: str):
-    val = await state.get_value(name) or await state.get_value(_lookup_key(name) or "")
+    val = await state.get(name) or await state.get(_lookup_key(name) or "")
     if val is None:
         raise HTTPException(404)
     return {"name": name, "value": val}

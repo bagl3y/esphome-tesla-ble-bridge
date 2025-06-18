@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body, Query, HTTPException
-from domain.state import state
-from application.services import call_api
+from src.domain.state import state
+from src.application.services import call_api
 from typing import Any, Optional
 
 router = APIRouter(prefix="/api/1/vehicles/{vin}")
@@ -20,14 +20,16 @@ async def vehicle_data(vin: str, endpoints: Optional[str] = Query(None)):
     snap = await state.snapshot()
     resp = {
         "charge_state": {
-            "battery_level": snap.get("battery_level"),
-            "charging_state": "Charging" if snap.get("charging") else "Stopped",
-            "charge_current_request": snap.get("charging_amps"),
-            "charge_limit_soc": snap.get("charging_limit"),
+            "battery_level": snap.get("charge_level"),
+            "charging_state": snap.get("charging_state"),
+            "charge_current_request": snap.get("charge_current"),
+            "charge_limit_soc": snap.get("charge_limit"),
+            "charge_port_door_open": snap.get("charge_flap"),
         },
         "climate_state": {
-            "inside_temp": snap.get("inside_temp"),
-            "outside_temp": snap.get("outside_temp"),
+            "inside_temp": snap.get("interior"),
+            "outside_temp": snap.get("exterior"),
+            "is_auto_conditioning_on": snap.get("climate"),
         },
     }
     if endpoints:

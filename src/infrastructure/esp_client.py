@@ -1,7 +1,7 @@
 import asyncio, logging, aioesphomeapi
 from typing import Any, Callable
-from .state import state
-from .config import Settings
+from src.domain.state import state
+from src.config.settings import Settings
 import contextlib
 
 logger = logging.getLogger(__name__)
@@ -18,9 +18,13 @@ async def run(settings: Settings, publish: Callable[[str,str],None]):
 
     async def state_cb(msg):
         await state.set(msg.key, msg.state)
-        simple = ENTITY_MAP.get(msg.key)
-        if simple:
-            publish(simple, str(msg.state))
+        ent = state.entities.get(msg.key)
+        if ent and getattr(ent, "object_id", None):
+            await state.set(ent.object_id, msg.state)
+        s = ENTITY_MAP.get(msg.key)
+        if s:
+            publish(s, str(msg.state))
+        logger.debug("state update %s = %s", msg.key, msg.state)
 
     while True:
         try:
@@ -37,11 +41,22 @@ async def run(settings: Settings, publish: Callable[[str,str],None]):
                     platform = platform[:-4]
                 if platform.endswith("sensor") and not platform.endswith("_sensor"):
                     platform = platform[:-6] + "_sensor"
-                state.entity_types[ent.key] = platform
+                state.types[ent.key] = platform
                 if getattr(ent, "object_id", None):
                     state.oid2key[ent.object_id] = ent.key
+            logger.debug("entities discovered: %s", len(state.entities))
 
             client.subscribe_states(lambda s: asyncio.create_task(state_cb(s)))
+
+            # initial states
+            try:
+                init_states = await client.get_states()
+                for s in init_states:
+                    await state_cb(s)
+                logger.debug("initial states cached: %s", len(init_states))
+            except Exception:
+                pass
+
             try:
                 await client.wait_until_disconnected()
             except AttributeError:

@@ -1,12 +1,19 @@
 import asyncio, logging
-from config.settings import load as load_settings
-from infrastructure.mqtt_client import init as mqtt_init
-from infrastructure.esp_client import run as esp_run
-from interface_http.http_app import app
-from interface_http.fleet_routes import attach as attach_routes
+from src.config.settings import load as load_settings
+from src.infrastructure.mqtt_client import init as mqtt_init
+from src.infrastructure.esp_client import run as esp_run
+from src.interface_http.http_app import app
+from src.interface_http.fleet_routes import attach as attach_routes
 
 settings = load_settings()
-logging.basicConfig(level=settings.log_level)
+
+# force override logging config so DEBUG messages show even with uvicorn
+logging.basicConfig(
+    level=settings.log_level.upper(),
+    format="[%(asctime)s] %(levelname)s: %(message)s",
+    force=True,
+)
+logging.debug("Bridge starting with log_level=%s", settings.log_level)
 
 attach_routes(app)
 

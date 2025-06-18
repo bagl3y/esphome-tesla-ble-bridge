@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import HTTPException
-from domain.state import state
+from src.domain.state import state
 
 async def call_api(method: str, *args):
     c = state.client

@@ -23,7 +23,7 @@ class Vehicle:
 @dataclasses.dataclass
 class Settings:
     log_level: str = "INFO"
-    mqtt: MqttSettings = MqttSettings()
+    mqtt: MqttSettings = dataclasses.field(default_factory=MqttSettings)
     vehicles: List[Vehicle] = dataclasses.field(default_factory=list)
 
 
