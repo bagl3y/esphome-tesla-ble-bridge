@@ -8,7 +8,12 @@ router = APIRouter(prefix="/api/1/vehicles/{vin}")
 # helper
 
 def fleet_resp(payload: Any):
-    return {"response": payload}
+    # Note: EVCC templates expect the payload to be available under
+    # `.response.response.<field>` – i.e. the actual data sits one level
+    # deeper than the classic Tesla API. We therefore wrap our original
+    # payload in an additional `response` object so the resulting JSON
+    # structure becomes `{ "response": { "response": { ... } } }`.
+    return {"response": {"response": payload}}
 
 
 def validate_vin(vin: str):
