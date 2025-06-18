@@ -1,24 +1,15 @@
-from fastapi import APIRouter, Body, Query, HTTPException
+from fastapi import APIRouter, Body, Query, HTTPException, Request
 from src.domain.state import state
 from src.application.services import call_api
 from typing import Any, Optional
 
 router = APIRouter(prefix="/api/1/vehicles/{vin}")
 
-# helper
-
 def fleet_resp(payload: Any):
-    # Note: EVCC templates expect the payload to be available under
-    # `.response.response.<field>` – i.e. the actual data sits one level
-    # deeper than the classic Tesla API. We therefore wrap our original
-    # payload in an additional `response` object so the resulting JSON
-    # structure becomes `{ "response": { "response": { ... } } }`.
     return {"response": {"response": payload}}
-
 
 def validate_vin(vin: str):
     cfg_vin = (state.entities and next(iter(state.entities.values()), None))
-
 
 @router.get("/vehicle_data")
 async def vehicle_data(vin: str, endpoints: Optional[str] = Query(None)):
@@ -48,7 +39,6 @@ async def vehicle_data(vin: str, endpoints: Optional[str] = Query(None)):
         resp = {k: v for k, v in resp.items() if k in wanted}
     return fleet_resp(resp)
 
-
 @router.get("/body_controller_state")
 async def body_state(vin: str):
     snap = await state.snapshot()
@@ -58,9 +48,6 @@ async def body_state(vin: str):
         "userPresence": "VEHICLE_USER_PRESENCE_PRESENT" if snap.get("user_presence") else "VEHICLE_USER_PRESENCE_NOT_PRESENT"
     }
     return fleet_resp(data)
-
-
-# ---------------- commands -----------------
 
 async def generic_cmd(name:str, body:dict|None):
     key = state.oid2key.get(name)
@@ -80,7 +67,6 @@ async def generic_cmd(name:str, body:dict|None):
     else:
         raise HTTPException(400)
 
-
 COMMAND_MAP = {
     "wake_up": lambda _: generic_cmd("wake_up", None),
     "charge_start": lambda _: generic_cmd("charger", {"state": True}),
@@ -97,13 +83,16 @@ COMMAND_MAP = {
     "set_sentry_mode": lambda body: generic_cmd("sentry_mode", {"state": body["on"]}),
 }
 
-
 @router.post("/command/{cmd}")
-async def run_command(vin: str, cmd: str, wait: bool = Query(False), body: Optional[dict[str, Any]] = Body(None)):
+async def run_command(request: Request, vin: str, cmd: str, wait: bool = Query(False)):
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
+
     fn = COMMAND_MAP.get(cmd) or (lambda b: generic_cmd(cmd, b))
     await fn(body or {})
     return fleet_resp({"result": True})
 
-
 def attach(app):
-    app.include_router(router) 
+    app.include_router(router)
