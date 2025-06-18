@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from .state import state
+from domain.state import state
 
 app = FastAPI(title="Tesla BLE Bridge", version="0.1.0")
 
@@ -27,7 +27,7 @@ async def list_entities():
             "name": ent.name,
             "object_id": getattr(ent, "object_id", None),
             "unit": getattr(ent, "unit_of_measurement", None),
-            "platform": state.entity_types.get(k),
+            "platform": state.types.get(k),
             "state": snap.get(k)
         })
     return JSONResponse(content=res) 

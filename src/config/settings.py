@@ -1,4 +1,4 @@
-import json, os, dataclasses, pathlib
+import json, os, pathlib, dataclasses
 from typing import List, Optional
 
 CONFIG_FILE = os.getenv("CONFIG_FILE", "config.json")
@@ -27,22 +27,20 @@ class Settings:
     vehicles: List[Vehicle] = dataclasses.field(default_factory=list)
 
 
-def load_settings() -> Settings:
-    cfg_path = pathlib.Path(CONFIG_FILE)
-    if not cfg_path.is_file():
-        raise RuntimeError(f"Config file {cfg_path} not found")
-    raw = json.loads(cfg_path.read_text())
-
-    mqtt_cfg = raw.get("mqtt", {})
+def load() -> Settings:
+    path = pathlib.Path(CONFIG_FILE)
+    if not path.is_file():
+        raise RuntimeError("config.json not found")
+    raw = json.loads(path.read_text())
+    mqtt_raw = raw.get("mqtt", {})
     mqtt = MqttSettings(
-        enable=mqtt_cfg.get("enable", True),
-        host=mqtt_cfg.get("host", "mqtt"),
-        port=int(mqtt_cfg.get("port", 1883)),
-        username=mqtt_cfg.get("username"),
-        password=mqtt_cfg.get("password"),
-        base_topic=mqtt_cfg.get("base_topic", "evcc/tesla"),
+        enable=mqtt_raw.get("enable", True),
+        host=mqtt_raw.get("host", "mqtt"),
+        port=int(mqtt_raw.get("port", 1883)),
+        username=mqtt_raw.get("username"),
+        password=mqtt_raw.get("password"),
+        base_topic=mqtt_raw.get("base_topic", "evcc/tesla"),
     )
-
     vehicles = [
         Vehicle(
             vin=v.get("vin"),
@@ -54,10 +52,5 @@ def load_settings() -> Settings:
         for v in raw.get("vehicles", [])
     ]
     if not vehicles:
-        raise RuntimeError("'vehicles' array must contain at least one entry")
-
-    return Settings(
-        log_level=raw.get("log_level", "INFO"),
-        mqtt=mqtt,
-        vehicles=vehicles,
-    ) 
+        raise RuntimeError("vehicles list empty")
+    return Settings(log_level=raw.get("log_level", "INFO"), mqtt=mqtt, vehicles=vehicles) 

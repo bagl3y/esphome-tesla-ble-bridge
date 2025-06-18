@@ -17,7 +17,7 @@ async def run(settings: Settings, publish: Callable[[str,str],None]):
     client = aioesphomeapi.APIClient(veh.host, veh.port, veh.password or "", **client_kwargs)
 
     async def state_cb(msg):
-        await state.set_value(msg.key, msg.state)
+        await state.set(msg.key, msg.state)
         simple = ENTITY_MAP.get(msg.key)
         if simple:
             publish(simple, str(msg.state))

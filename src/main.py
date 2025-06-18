@@ -1,20 +1,23 @@
 import asyncio, logging
-from bridge import config, mqtt, esp, http_api, fleet_api
+from config.settings import load as load_settings
+from infrastructure.mqtt_client import init as mqtt_init
+from infrastructure.esp_client import run as esp_run
+from interface_http.http_app import app
+from interface_http.fleet_routes import attach as attach_routes
 
-settings = config.load_settings()
+settings = load_settings()
 logging.basicConfig(level=settings.log_level)
 
-app = http_api.app
-fleet_api.attach(app)
+attach_routes(app)
 
-mqtt_client, publish = mqtt.init(settings)
+mqtt_cli, publish = mqtt_init(settings)
 
 @app.on_event("startup")
-async def _startup():
-    asyncio.create_task(esp.run(settings, publish))
+async def startup():
+    asyncio.create_task(esp_run(settings, publish))
 
 @app.on_event("shutdown")
-async def _shutdown():
-    if mqtt_client:
-        mqtt_client.loop_stop()
-        mqtt_client.disconnect() 
+async def shutdown():
+    if mqtt_cli:
+        mqtt_cli.loop_stop()
+        mqtt_cli.disconnect() 

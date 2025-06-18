@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body, Query, HTTPException
-from .state import state
-from .utils import call_api
+from domain.state import state
+from application.services import call_api
 from typing import Any, Optional
 
 router = APIRouter(prefix="/api/1/vehicles/{vin}")
@@ -53,7 +53,7 @@ async def generic_cmd(name:str, body:dict|None):
     key = state.oid2key.get(name)
     if not key:
         raise HTTPException(404)
-    typ = state.entity_types.get(key)
+    typ = state.types.get(key)
     if typ == "button":
         await call_api("button_command", key)
     elif typ == "switch":
