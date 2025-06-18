@@ -2,12 +2,18 @@
 
 This micro-service connects an **ESP32** running the firmware [esphome-tesla-ble](https://github.com/PedroKTFC/esphome-tesla-ble) to your energy-management stack (EVCC, Home Assistant, etc.).
 
+It is **fully compatible with [EVCC](https://evcc.io/)** thanks to the built-in `tesla-ble` provider template.
+
+Ready-to-use Docker images are published on [Docker Hub](https://hub.docker.com/r/bagl3y/esphome-tesla-ble-bridge/tags).
+
 * Persistent connection to the ESPHome native API (TCP 6053)
 * Caches ESPHome entity states (SoC, connected, charging…)
 * Exposes the data through:
   * **HTTP REST** (FastAPI)
   * **MQTT** (optional)
 * Ultra-simple deployment with **Docker Compose**
+
+> **⚠️  Work in progress:** MQTT publishing and support for controlling **multiple ESP32 devices** from a single bridge instance are still under active development and may change without notice.
 
 ---
 
