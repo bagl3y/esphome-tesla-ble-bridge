@@ -1,0 +1,20 @@
+{
+  "log_level": "INFO",
+  "mqtt": {
+    "enable": false,
+    "host": "mqtt",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "base_topic": "evcc/tesla"
+  },
+  "vehicles": [
+    {
+      "vin": "XP7YJ3E1EA7HF00000",
+      "host": "esp-tesla.local",
+      "port": 6053,
+      "password": "",
+      "encryption_key": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789+/=="
+    }
+  ]
+} 

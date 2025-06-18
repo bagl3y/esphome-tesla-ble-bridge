@@ -1,0 +1,7 @@
+services:
+  bridge:
+    build: .
+    volumes:
+      - ./config.json:/app/config.json:ro
+    ports:
+      - "8000:8000"
