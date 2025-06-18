@@ -30,6 +30,12 @@ async def vehicle_data(vin: str, endpoints: Optional[str] = Query(None)):
             "charge_current_request": snap.get("charge_current"),
             "charge_limit_soc": snap.get("charge_limit"),
             "charge_port_door_open": snap.get("charge_flap"),
+            "battery_range": (
+                snap.get("battery_range")
+                or snap.get("range")
+                or snap.get("est_range")
+                or 0
+            ),
         },
         "climate_state": {
             "inside_temp": snap.get("interior"),
