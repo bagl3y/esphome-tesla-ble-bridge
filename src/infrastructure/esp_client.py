@@ -63,6 +63,8 @@ async def run(settings: Settings, publish: Callable[[str,str],None]):
                 await asyncio.Future()
         except Exception as e:  # reconnect on any error
             logger.warning("ESP loop error: %s", e)
+            # Mark the client as disconnected so that HTTP endpoints return 503
+            state.client = None
             with contextlib.suppress(Exception):
                 await client.disconnect()
             await asyncio.sleep(5) 
