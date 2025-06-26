@@ -10,12 +10,7 @@ ENTITY_MAP = {"battery_level": "soc", "connected": "connected", "charging": "cha
 
 async def run(settings: Settings, publish: Callable[[str,str],None]):
     veh = settings.vehicles[0]
-    client_kwargs = {}
-    if veh.encryption_key:
-        client_kwargs["noise_psk"] = veh.encryption_key
-
-    client = aioesphomeapi.APIClient(veh.host, veh.port, veh.password or "", **client_kwargs)
-
+    
     async def state_cb(msg):
         await state.set(msg.key, msg.state)
         ent = state.entities.get(msg.key)
@@ -27,7 +22,15 @@ async def run(settings: Settings, publish: Callable[[str,str],None]):
         logger.debug("state update %s = %s", msg.key, msg.state)
 
     while True:
+        client = None
         try:
+            client_kwargs = {}
+            if veh.encryption_key:
+                client_kwargs["noise_psk"] = veh.encryption_key
+            client = aioesphomeapi.APIClient(
+                veh.host, veh.port, veh.password or "", **client_kwargs
+            )
+            
             await client.connect(login=True)
             state.client = client
 
@@ -65,6 +68,7 @@ async def run(settings: Settings, publish: Callable[[str,str],None]):
             logger.warning("ESP loop error: %s", e)
             # Mark the client as disconnected so that HTTP endpoints return 503
             state.client = None
-            with contextlib.suppress(Exception):
-                await client.disconnect()
+            if client:
+                with contextlib.suppress(Exception):
+                    await client.disconnect()
             await asyncio.sleep(5) 

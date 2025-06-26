@@ -23,6 +23,7 @@ async def call_api(method: str, *args):
             c = await _wait_for_reconnect()
         except asyncio.TimeoutError:
             raise HTTPException(503)
+
     fn = getattr(c, method)
     try:
         if asyncio.iscoroutinefunction(fn):
@@ -30,7 +31,7 @@ async def call_api(method: str, *args):
         else:
             fn(*args)
     except APIConnectionError:
-        # Connection lost during call ⇒ attendre une reconnexion puis retenter
+        # Connection lost during call ⇒ wait for reconnect and retry
         state.client = None
         try:
             c = await _wait_for_reconnect()
