@@ -1,6 +1,6 @@
 services:
   bridge:
-    image: bagl3y/esphome-tesla-ble-bridge:latest
+    build: .
     volumes:
       - ./config.json:/app/config.json:ro
     ports:

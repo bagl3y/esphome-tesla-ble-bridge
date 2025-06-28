@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  config.json: "{\n  \"log_level\": \"INFO\",\n  \"mqtt\": {\n    \"enable\": false\n  },\n  \"vehicles\": [\n    {\n      \"vin\": \"5YJ3E1EA7HF000000\",\n      \"host\": \"192.168.42.42\",\n      \"port\": 6053,\n      \"password\": \"\",\n      \"encryption_key\": \"abc123==\"\n    }\n  ]\n} "
+kind: ConfigMap
+metadata:
+  annotations:
+    use-subpath: "true"
+  labels:
+    io.kompose.service: bridge
+  name: bridge-cm

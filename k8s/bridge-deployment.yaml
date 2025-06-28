@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml
+    kompose.version: 1.36.0 (HEAD)
+  labels:
+    io.kompose.service: bridge
+  name: bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: bridge
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml
+        kompose.version: 1.36.0 (HEAD)
+      labels:
+        io.kompose.service: bridge
+    spec:
+      containers:
+        - image: bagl3y/esphome-tesla-ble-bridge:latest
+          name: bridge
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /app/config.json
+              name: bridge-cm
+              readOnly: true
+              subPath: config.json
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            items:
+              - key: config.json
+                path: config.json
+            name: bridge-cm
+          name: bridge-cm

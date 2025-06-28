@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Body, Query, HTTPException, Request
+from fastapi import APIRouter, Body, Query, HTTPException, Request, Depends
 from src.domain.state import state
-from src.application.services import call_api
+from src.application.services import call_api, ensure_client
 from typing import Any, Optional
 
-router = APIRouter(prefix="/api/1/vehicles/{vin}")
+router = APIRouter(
+    prefix="/api/1/vehicles/{vin}",
+    dependencies=[Depends(ensure_client)],
+)
 
 def fleet_resp(payload: Any):
     return {"response": {"response": payload}}

@@ -60,15 +60,18 @@ async def run(settings: Settings, publish: Callable[[str,str],None]):
             except Exception:
                 pass
 
-            try:
-                await client.wait_until_disconnected()
-            except AttributeError:
-                await asyncio.Future()
+            # Liveness check loop. Replaces wait_until_disconnected.
+            while client.is_connected:
+                await asyncio.sleep(60)
+                await client.ping()
+            
+            logger.warning("ESPHome device disconnected.")
+
         except Exception as e:  # reconnect on any error
             logger.warning("ESP loop error: %s", e)
             # Mark the client as disconnected so that HTTP endpoints return 503
             state.client = None
             if client:
                 with contextlib.suppress(Exception):
-                    await client.disconnect()
+                    await asyncio.wait_for(client.disconnect(), 5)
             await asyncio.sleep(5) 

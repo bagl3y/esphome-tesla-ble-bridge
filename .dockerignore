@@ -2,9 +2,11 @@
 config.json
 Dockerfile
 docker-compose.yml
+docker-compose-build.yml
 README.md
 README*
 .github/
 .git/
 *.pyc
 __pycache__/ 
+k8s/
