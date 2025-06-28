@@ -6,12 +6,12 @@ It is **fully compatible with [EVCC](https://evcc.io/)** thanks to the built-in 
 
 Ready-to-use Docker images are published on [Docker Hub](https://hub.docker.com/r/bagl3y/esphome-tesla-ble-bridge/tags).
 
-* Persistent connection to the ESPHome native API (TCP 6053)
-* Caches ESPHome entity states (SoC, connected, charging…)
+* Persistent connection to the ESPHome native API (TCP 6053) for **multiple vehicles**.
+* Caches ESPHome entity states (SoC, connected, charging…) for each vehicle.
 * Exposes the data through:
   * **HTTP REST** (FastAPI)
   * **MQTT** (optional)
-* Ultra-simple deployment with **Docker Compose**
+* Ultra-simple deployment with **Docker Compose** or **Kubernetes**.
 
 > **⚠️  Work in progress:** MQTT publishing and support for controlling **multiple ESP32 devices** from a single bridge instance are still under active development and may change without notice.
 
@@ -109,17 +109,22 @@ All settings live in a single **`config.json`** file (default at the repo root, 
   },
   "vehicles": [
     {
-      "vin": "5YJ3E1EA7HF000000", // optional – validates Fleet routes
+      "vin": "XP7YGCEK5SB617830", // required – used in API routes and MQTT topics
       "host": "esp-tesla.local",  // ESP32 IP or mDNS name
       "port": 6053,
       "password": "",            // legacy ESPHome auth (usually empty)
       "encryption_key": "AbCd…==" // Noise key (Base64)
+    },
+    {
+      "vin": "5YJ3E1EA7HF000000",
+      "host": "esp-other.local",
+      "encryption_key": "XyZ…=="
     }
   ]
 }
 ```
 
-👉 For multiple vehicles, add more objects to the `vehicles` array (one bridge instance per vehicle is still the safest approach for now).
+👉 To manage multiple vehicles, simply add more objects to the `vehicles` array. The bridge will create a dedicated connection for each one.
 
 ---
 
@@ -129,7 +134,7 @@ All settings live in a single **`config.json`** file (default at the repo root, 
 |------|---------|
 | **Docker Compose** | `docker compose up -d` |
 | **Plain Docker** | `docker build -t tesla-ble-bridge . && docker run -p 8000:8000 -v $PWD/config.json:/app/config.json:ro tesla-ble-bridge` |
-| **Local (venv)** | `uvicorn app:app --host 0.0.0.0 --port 8000` |
+| **Local (venv)** | `uvicorn src.interface_http.http_app:app --host 0.0.0.0 --port 8000` |
 
 The API will then be reachable at `http://localhost:8000`.
 
@@ -137,37 +142,37 @@ The API will then be reachable at `http://localhost:8000`.
 
 ## HTTP API
 
-### Legacy endpoints
+All vehicle-specific endpoints are prefixed with `/api/1/vehicles/{VIN}`.
+
+### Health & Status
 
 | Method | URL | Description |
 |--------|-----|-------------|
-| `GET` | `/state/{key}` | Raw value of an ESPHome entity (`battery_level`, `charging`, …) |
-| `GET` | `/entities` | List of discovered entities + metadata |
+| `GET` | `/health/live` | Liveness probe (service is running) |
+| `GET` | `/health/ready`| Readiness probe (connected to the ESP32) |
 
-### Tesla Fleet-style API
-
-#### Data & status
+### Vehicle Data
 
 | Method | URL | Description |
 |--------|-----|-------------|
 | `GET` | `/api/1/vehicles/{VIN}/vehicle_data` | `charge_state`, `climate_state` (filter with `?endpoints=`) |
-| `GET` | `/api/1/vehicles/{VIN}/body_controller_state` | Lock / sleep / presence information |
-| `GET` | `/api/proxy/1/version` | Bridge version |
+| `GET` | `/api/1/vehicles/{VIN}/state/{key}` | Raw value of a specific ESPHome entity |
+| `GET` | `/api/1/vehicles/{VIN}/entities` | List of all discovered entities + metadata |
 
-#### Commands
+### Commands
 
 | Fleet command | Verb | URL | JSON body (example) |
 |---------------|------|-----|---------------------|
-| wake_up | `POST` | `/command/wake_up` | — |
-| charge_start / charge_stop | `POST` | `/command/charge_start` | — |
-| set_charging_amps | `POST` | `/command/set_charging_amps` | `{ "charging_amps": 5 }` |
-| set_charge_limit | `POST` | `/command/set_charge_limit` | `{ "percent": 80 }` |
-| auto_conditioning_start / stop | `POST` | `/command/auto_conditioning_start` | — |
-| charge_port_door_open / close | `POST` | `/command/charge_port_door_open` | — |
-| flash_lights | `POST` | `/command/flash_lights` | — |
-| honk_horn | `POST` | `/command/honk_horn` | — |
-| unlock_charge_port | `POST` | `/command/unlock_charge_port` | — |
-| set_sentry_mode | `POST` | `/command/set_sentry_mode` | `{ "on": true }` |
+| wake_up | `POST` | `/api/1/vehicles/{VIN}/command/wake_up` | — |
+| charge_start / charge_stop | `POST` | `/api/1/vehicles/{VIN}/command/charge_start` | — |
+| set_charging_amps | `POST` | `/api/1/vehicles/{VIN}/command/set_charging_amps` | `{ "charging_amps": 5 }` |
+| set_charge_limit | `POST` | `/api/1/vehicles/{VIN}/command/set_charge_limit` | `{ "percent": 80 }` |
+| auto_conditioning_start / stop | `POST` | `/api/1/vehicles/{VIN}/command/auto_conditioning_start` | — |
+| charge_port_door_open / close | `POST` | `/api/1/vehicles/{VIN}/command/charge_port_door_open` | — |
+| flash_lights | `POST` | `/api/1/vehicles/{VIN}/command/flash_lights` | — |
+| honk_horn | `POST` | `/api/1/vehicles/{VIN}/command/honk_horn` | — |
+| unlock_charge_port | `POST` | `/api/1/vehicles/{VIN}/command/unlock_charge_port` | — |
+| set_sentry_mode | `POST` | `/api/1/vehicles/{VIN}/command/set_sentry_mode` | `{ "on": true }` |
 
 All responses follow the Fleet format: `{ "response": … }`.
 
@@ -182,12 +187,12 @@ All responses follow the Fleet format: `{ "response": … }`.
 If `mqtt.enable` is `true`, every entity listed in `ENTITY_MAP` is published to:
 
 ```text
-{base_topic}/{simple_name}
+{base_topic}/{vin}/{simple_name}
 ```
 
-Example with the default config:
-* `evcc/tesla/soc        → 68.5`
-* `evcc/tesla/connected  → True`
+Example with the default config for a vehicle with VIN `XP7YGCEK5SB617830`:
+* `evcc/tesla/XP7YGCEK5SB617830/soc        → 68.5`
+* `evcc/tesla/XP7YGCEK5SB617830/connected  → True`
 
 Messages are published with the `retain` flag.
 

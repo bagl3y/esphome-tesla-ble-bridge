@@ -29,9 +29,16 @@ def read_root():
 
 @app.get("/state/{name}")
 async def get_state(name: str):
-    val = await state.get(name) or await state.get(_lookup_key(name) or "")
+    val = await state.get(name)
     if val is None:
-        raise HTTPException(404)
+        # If not found, try to look up via object_id
+        key = _lookup_key(name)
+        if key:
+            val = await state.get(key)
+
+    if val is None:
+        raise HTTPException(status_code=404, detail=f"State for '{name}' not found")
+        
     return {"name": name, "value": val}
 
 

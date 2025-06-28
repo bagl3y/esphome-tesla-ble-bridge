@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Body, Query, HTTPException, Request, Depends
 from src.domain.state import state
 from src.application.services import call_api, ensure_client
@@ -55,6 +56,7 @@ async def body_state(vin: str):
 async def generic_cmd(name:str, body:dict|None):
     key = state.oid2key.get(name)
     if not key:
+        logging.getLogger(__name__).warning("Command failed: key for '%s' not found in state.oid2key", name)
         raise HTTPException(404)
     typ = state.types.get(key)
     if typ == "button":

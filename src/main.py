@@ -26,5 +26,7 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     if mqtt_cli:
+        logging.info("Disconnecting MQTT client...")
         mqtt_cli.loop_stop()
-        mqtt_cli.disconnect() 
+        mqtt_cli.disconnect()
+        logging.info("MQTT client disconnected.") 
