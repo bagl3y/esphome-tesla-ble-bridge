@@ -22,7 +22,7 @@ logging.basicConfig(
 if settings.log_level.upper() == "INFO":
     logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
 
-logging.debug("Bridge starting with log_level=%s", settings.log_level)
+logging.info("Bridge starting with log_level=%s", settings.log_level)
 
 attach_routes(app)
 
