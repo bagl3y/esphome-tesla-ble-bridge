@@ -22,8 +22,16 @@ async def call_api(vin: str, method: str, *args):
         await _wait_for_reconnect(vin)
         if not vehicle_state.client:
             raise HTTPException(status_code=503, detail="Service Unavailable")
-    api = getattr(vehicle_state.client, method)
-    return await api(*args)
+
+    api = getattr(vehicle_state.client, method, None)
+    
+    if not api:
+        raise HTTPException(status_code=500, detail=f"Internal error: API method '{method}' not found on client.")
+
+    if asyncio.iscoroutinefunction(api):
+        await api(*args)
+    else:
+        api(*args)
 
 
 async def ensure_client(vin: str):

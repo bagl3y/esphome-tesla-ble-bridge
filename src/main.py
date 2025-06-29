@@ -21,7 +21,13 @@ mqtt_cli, publish = mqtt_init(settings)
 
 @app.on_event("startup")
 async def startup():
-    asyncio.create_task(esp_run(settings, publish))
+    # Create a connection task for each configured vehicle
+    for vehicle in settings.vehicles:
+        if not vehicle.vin:
+            logging.warning("Skipping vehicle without VIN in config: %s", vehicle.host)
+            continue
+        logging.info("Starting connection handler for vehicle %s (%s)", vehicle.vin, vehicle.host)
+        asyncio.create_task(esp_run(vehicle, publish))
 
 @app.on_event("shutdown")
 async def shutdown():

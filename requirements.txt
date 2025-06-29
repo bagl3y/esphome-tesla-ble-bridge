@@ -4,3 +4,4 @@ uvicorn>=0.35.0
 paho-mqtt>=2.1.0
 python-dotenv>=1.1.1
 pydantic>=2.11.7
+protobuf==5.29.5

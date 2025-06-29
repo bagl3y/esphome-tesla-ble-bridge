@@ -1,13 +1,9 @@
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import JSONResponse
-from src.domain.state import state
-from src.application.services import ensure_client
+from fastapi import FastAPI, HTTPException
+from src.config.settings import load as load_settings
+from src.domain.state import state_manager
 
-app = FastAPI(title="Tesla BLE Bridge", version="0.1.0")
-
-
-def _lookup_key(oid: str):
-    return state.oid2key.get(oid)
+settings = load_settings()
+app = FastAPI()
 
 
 @app.get("/health/live")
@@ -16,43 +12,22 @@ def liveness_probe():
     return {"status": "ok"}
 
 
-@app.get("/health/ready", dependencies=[Depends(ensure_client)])
-def readiness_probe():
-    """Returns 200 OK if the service is connected to ESPHome."""
-    return {"status": "ready"}
+@app.get("/health/ready")
+async def readiness_probe():
+    """
+    Returns 200 OK if at least one vehicle is connected to ESPHome.
+    Otherwise, returns 503 Service Unavailable.
+    """
+    for vehicle in settings.vehicles:
+        if not vehicle.vin:
+            continue
+        # This is an internal check, so we don't need to lock
+        if vehicle.vin in state_manager._states and state_manager._states[vehicle.vin].client is not None:
+            return {"status": "ready"}
+
+    raise HTTPException(status_code=503, detail="Service Unavailable: No vehicles connected")
 
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
-
-
-@app.get("/state/{name}")
-async def get_state(name: str):
-    val = await state.get(name)
-    if val is None:
-        # If not found, try to look up via object_id
-        key = _lookup_key(name)
-        if key:
-            val = await state.get(key)
-
-    if val is None:
-        raise HTTPException(status_code=404, detail=f"State for '{name}' not found")
-        
-    return {"name": name, "value": val}
-
-
-@app.get("/entities")
-async def list_entities():
-    snap = await state.snapshot()
-    res = []
-    for k, ent in state.entities.items():
-        res.append({
-            "key": k,
-            "name": ent.name,
-            "object_id": getattr(ent, "object_id", None),
-            "unit": getattr(ent, "unit_of_measurement", None),
-            "platform": state.types.get(k),
-            "state": snap.get(k)
-        })
-    return JSONResponse(content=res) 
+    return {"Hello": "World"} 

@@ -64,22 +64,24 @@ async def run(vehicle: Vehicle, publish: Callable[[str, str, str], None]):
             except Exception:
                 pass
 
-            try:
-                # wait_until_disconnected() is a Future that will complete when the
-                # connection is lost.
-                async def keepalive():
-                    while True:
-                        await asyncio.sleep(60)
-                        await client.ping()
+            # Keep the connection alive by periodically sending a lightweight command.
+            # If the command fails, an exception will be raised, caught by the
+            # outer loop, and trigger the reconnection logic.
+            async def keepalive():
+                while True:
+                    await asyncio.sleep(60)
+                    await client.device_info()
+            
+            await keepalive()
 
-                await asyncio.gather(client.wait_until_disconnected(), keepalive())
-            except AttributeError:
-                # fallback for older aioesphomeapi versions
-                await asyncio.Future()
-
-        except Exception as e:  # reconnect on any error
+        except asyncio.CancelledError:
+            logger.info("Connection handler for %s cancelled.", vehicle.vin)
+            if client and client.is_connected:
+                with contextlib.suppress(Exception):
+                    await client.disconnect()
+            break  # Exit the while True loop
+        except Exception as e:
             logger.warning("ESP loop error for %s: %s", vehicle.vin, e)
-            # Mark the client as disconnected so that HTTP endpoints return 503
             vehicle_state.client = None
             if client:
                 with contextlib.suppress(Exception):
