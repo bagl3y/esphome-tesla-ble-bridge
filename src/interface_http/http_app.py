@@ -22,10 +22,10 @@ async def readiness_probe():
         if not vehicle.vin:
             continue
         # This is an internal check, so we don't need to lock
-        if vehicle.vin in state_manager._states and state_manager._states[vehicle.vin].client is not None:
+        if vehicle.vin in state_manager._states and state_manager._states[vehicle.vin].initialized:
             return {"status": "ready"}
 
-    raise HTTPException(status_code=503, detail="Service Unavailable: No vehicles connected")
+    raise HTTPException(status_code=503, detail="Service Unavailable: No vehicles connected or initialized")
 
 
 @app.get("/")

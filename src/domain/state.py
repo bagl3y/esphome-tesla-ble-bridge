@@ -10,6 +10,7 @@ class VehicleState:
         self.types: Dict[str, str] = {}
         self.oid2key: Dict[str, str] = {}
         self.client: Optional[Any] = None  # aioesphomeapi.APIClient
+        self.initialized: bool = False  # Flag to indicate full initialization
         self._lock = asyncio.Lock()
 
     async def set(self, key: str, value: Any):

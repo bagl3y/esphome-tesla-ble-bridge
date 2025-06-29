@@ -64,6 +64,10 @@ async def run(vehicle: Vehicle, publish: Callable[[str, str, str], None]):
             except Exception:
                 pass
 
+            # Mark the vehicle as fully initialized
+            vehicle_state.initialized = True
+            logger.info("Connection to %s fully initialized.", vehicle.vin)
+
             # Keep the connection alive by periodically sending a lightweight command.
             # If the command fails, an exception will be raised, caught by the
             # outer loop, and trigger the reconnection logic.
@@ -75,12 +79,14 @@ async def run(vehicle: Vehicle, publish: Callable[[str, str, str], None]):
             await keepalive()
 
         except asyncio.CancelledError:
+            vehicle_state.initialized = False
             logger.info("Connection handler for %s cancelled.", vehicle.vin)
             if client and client.is_connected:
                 with contextlib.suppress(Exception):
                     await client.disconnect()
             break  # Exit the while True loop
         except Exception as e:
+            vehicle_state.initialized = False
             logger.warning("ESP loop error for %s: %s", vehicle.vin, e)
             vehicle_state.client = None
             if client:
