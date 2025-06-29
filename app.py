@@ -54,11 +54,11 @@ if __name__ == "__main__":
     # Apply logging configuration BEFORE starting uvicorn
     logging.config.dictConfig(log_config)
 
+    # Force uvicorn to not override our logging config
     uvicorn.run(
         "src.main:app",
         host="0.0.0.0",
         port=8000,
-        log_config=log_config,
-        # Force uvicorn to not override our logging config
+        log_config=None,
         use_colors=False,
     ) 
