@@ -4,43 +4,16 @@ from src.infrastructure.mqtt_client import init as mqtt_init
 from src.infrastructure.esp_client import run as esp_run
 from src.interface_http.http_app import app
 from src.interface_http.fleet_routes import attach as attach_routes
-from src.interface_http.logging import HealthCheckFilter
 
 settings = load_settings()
 esp_tasks = []
-
-# force override logging config so DEBUG messages show even with uvicorn
-logging.basicConfig(
-    level=settings.log_level.upper(),
-    format="[%(asctime)s] %(levelname)s: %(message)s",
-    force=True,
-)
-
-# Grab the Uvicorn loggers and override their configuration to be consistent
-# with the application's logging.
-loggers = (
-    logging.getLogger("uvicorn.access"),
-    logging.getLogger("uvicorn.error"),
-)
-# Create a new handler with our desired format
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
-# Remove any existing handlers and add our new one
-for logger in loggers:
-    logger.handlers.clear()
-    logger.addHandler(handler)
-
-# Add the filter to the uvicorn.access logger ONLY if the log level is INFO.
-# This prevents health check logs from spamming the console in normal operation,
-# but allows them to be seen when debugging.
-if settings.log_level.upper() == "INFO":
-    logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
 
 logging.info("Bridge starting with log_level=%s", settings.log_level)
 
 attach_routes(app)
 
 mqtt_cli, publish = mqtt_init(settings)
+
 
 @app.on_event("startup")
 async def startup():
@@ -50,10 +23,21 @@ async def startup():
             logging.warning("Skipping vehicle without VIN in config: %s", vehicle.host)
             continue
         logging.info("Starting connection handler for vehicle %s (%s)", vehicle.vin, vehicle.host)
-        asyncio.create_task(esp_run(vehicle, publish))
+        task = asyncio.create_task(esp_run(vehicle, publish))
+        esp_tasks.append(task)
+
 
 @app.on_event("shutdown")
 async def shutdown():
+    # Cleanly cancel all running ESPHome connection tasks
+    logging.info("Cancelling ESPHome connection tasks...")
+    for task in esp_tasks:
+        task.cancel()
+
+    if esp_tasks:
+        await asyncio.gather(*esp_tasks, return_exceptions=True)
+        logging.info("All ESPHome tasks cancelled.")
+
     if mqtt_cli:
         logging.info("Disconnecting MQTT client...")
         mqtt_cli.loop_stop()

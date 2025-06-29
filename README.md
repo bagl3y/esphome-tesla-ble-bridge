@@ -13,8 +13,6 @@ Ready-to-use Docker images are published on [Docker Hub](https://hub.docker.com/
   * **MQTT** (optional)
 * Ultra-simple deployment with **Docker Compose** or **Kubernetes**.
 
-> **⚠️  Work in progress:** MQTT publishing and support for controlling **multiple ESP32 devices** from a single bridge instance are still under active development and may change without notice.
-
 ---
 
 ## Table of contents
@@ -87,7 +85,7 @@ $ pip install -r requirements.txt
 
 # optional: set CONFIG_FILE if config.json is elsewhere
 $ export CONFIG_FILE=/path/to/config.json
-$ uvicorn app:app --reload
+$ python3 app.py
 ```
 
 ---
@@ -134,7 +132,7 @@ All settings live in a single **`config.json`** file (default at the repo root, 
 |------|---------|
 | **Docker Compose** | `docker compose up -d` |
 | **Plain Docker** | `docker build -t tesla-ble-bridge . && docker run -p 8000:8000 -v $PWD/config.json:/app/config.json:ro tesla-ble-bridge` |
-| **Local (venv)** | `uvicorn src.interface_http.http_app:app --host 0.0.0.0 --port 8000` |
+| **Local (venv)** | `python3 app.py` |
 
 The API will then be reachable at `http://localhost:8000`.
 
