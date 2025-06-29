@@ -3,9 +3,13 @@ from typing import Any
 
 class HealthCheckFilter(logging.Filter):
     """
-    A custom logging filter that prevents logs from health check endpoints
-    from being processed if they are at INFO level.
+    A custom logging filter that only shows health check endpoint logs
+    when the configured log level is DEBUG or lower, otherwise filters them out.
     """
+    def __init__(self, log_level: str = "INFO"):
+        super().__init__()
+        self.log_level = getattr(logging, log_level.upper(), logging.INFO)
+    
     def filter(self, record: logging.LogRecord) -> bool:
         # Check if the log record is for a health check endpoint.
         # Uvicorn access logs have a specific structure in record.args.
@@ -13,6 +17,6 @@ class HealthCheckFilter(logging.Filter):
         if len(record.args) >= 3 and isinstance(record.args[2], str):
             path = record.args[2]
             if path.startswith("/health"):
-                # Returning False stops the log record from being processed.
-                return False
+                # Only show health check logs if the configured level is DEBUG or lower
+                return self.log_level <= logging.DEBUG
         return True 
