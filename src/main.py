@@ -16,6 +16,17 @@ logging.basicConfig(
     force=True,
 )
 
+# Grab the Uvicorn logger and override its format to be consistent
+uvicorn_error_logger = logging.getLogger("uvicorn.error")
+uvicorn_error_logger.propagate = False
+uvicorn_access_logger = logging.getLogger("uvicorn.access")
+uvicorn_access_logger.propagate = False
+# Create a new handler to ensure we have full control
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
+uvicorn_error_logger.addHandler(handler)
+uvicorn_access_logger.addHandler(handler)
+
 # Add the filter to the uvicorn.access logger ONLY if the log level is INFO.
 # This prevents health check logs from spamming the console in normal operation,
 # but allows them to be seen when debugging.
