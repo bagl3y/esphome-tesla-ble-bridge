@@ -20,8 +20,10 @@ log_config = {
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
         "access": {
-            "format": "[%(asctime)s] %(levelname)s: %(client_addr)s - \"%(request_line)s\" %(status_code)s",
+            "()": "uvicorn.logging.AccessFormatter",
+            "fmt": '[%(asctime)s] %(levelname)s: %(client_addr)s - "%(request_line)s" %(status_code)s',
             "datefmt": "%Y-%m-%d %H:%M:%S",
+            "use_colors": False,
         },
     },
     "filters": {
@@ -47,7 +49,7 @@ log_config = {
         "": {"handlers": ["default"], "level": log_level, "propagate": False},
         "uvicorn": {"handlers": ["default"], "level": log_level, "propagate": False},
         "uvicorn.error": {"level": log_level, "handlers": ["default"], "propagate": False},
-        "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
+        "uvicorn.access": {"handlers": ["access"], "level": "DEBUG", "propagate": False},
         "src": {"handlers": ["default"], "level": log_level, "propagate": False},
     },
 }
