@@ -4,8 +4,10 @@ from src.infrastructure.mqtt_client import init as mqtt_init
 from src.infrastructure.esp_client import run as esp_run
 from src.interface_http.http_app import app
 from src.interface_http.fleet_routes import attach as attach_routes
+from src.interface_http.logging import HealthCheckFilter
 
 settings = load_settings()
+esp_tasks = []
 
 # force override logging config so DEBUG messages show even with uvicorn
 logging.basicConfig(
@@ -13,6 +15,13 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s: %(message)s",
     force=True,
 )
+
+# Add the filter to the uvicorn.access logger ONLY if the log level is INFO.
+# This prevents health check logs from spamming the console in normal operation,
+# but allows them to be seen when debugging.
+if settings.log_level.upper() == "INFO":
+    logging.getLogger("uvicorn.access").addFilter(HealthCheckFilter())
+
 logging.debug("Bridge starting with log_level=%s", settings.log_level)
 
 attach_routes(app)

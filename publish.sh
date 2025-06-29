@@ -5,13 +5,16 @@ set -e
 TAG=${1:-"debug"}
 IMAGE_NAME="bagl3y/esphome-tesla-ble-bridge"
 FULL_IMAGE_NAME="${IMAGE_NAME}:${TAG}"
+PLATFORMS="linux/amd64,linux/arm64"
 
-echo "Building and pushing image: ${FULL_IMAGE_NAME}"
+echo "Building and pushing multi-arch image: ${FULL_IMAGE_NAME}"
+echo "Target platforms: ${PLATFORMS}"
 
-# Build the image
-docker build -t "${FULL_IMAGE_NAME}" .
+# Use docker buildx to build for multiple platforms
+docker buildx build \
+  --platform "${PLATFORMS}" \
+  --tag "${FULL_IMAGE_NAME}" \
+  --push \
+  .
 
-# Push the image
-docker push "${FULL_IMAGE_NAME}"
-
-echo "Successfully pushed ${FULL_IMAGE_NAME}" 
+echo "Successfully pushed multi-arch image ${FULL_IMAGE_NAME} for platforms ${PLATFORMS}" 
