@@ -107,7 +107,7 @@ All settings live in a single **`config.json`** file (default at the repo root, 
   },
   "vehicles": [
     {
-      "vin": "XP7YGCEK5SB617830", // required – used in API routes and MQTT topics
+      "vin": "XP7YJ3E1EA7HF00000", // required – used in API routes and MQTT topics
       "host": "esp-tesla.local",  // ESP32 IP or mDNS name
       "port": 6053,
       "password": "",            // legacy ESPHome auth (usually empty)
@@ -188,9 +188,9 @@ If `mqtt.enable` is `true`, every entity listed in `ENTITY_MAP` is published to:
 {base_topic}/{vin}/{simple_name}
 ```
 
-Example with the default config for a vehicle with VIN `XP7YGCEK5SB617830`:
-* `evcc/tesla/XP7YGCEK5SB617830/soc        → 68.5`
-* `evcc/tesla/XP7YGCEK5SB617830/connected  → True`
+Example with the default config for a vehicle with VIN `XP7YJ3E1EA7HF00000`:
+* `evcc/tesla/XP7YJ3E1EA7HF00000/soc        → 68.5`
+* `evcc/tesla/XP7YJ3E1EA7HF00000/connected  → True`
 
 Messages are published with the `retain` flag.
 
