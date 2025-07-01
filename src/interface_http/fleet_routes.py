@@ -1,5 +1,4 @@
 import logging
-import math
 from fastapi import APIRouter, Body, Query, HTTPException, Request, Depends
 from src.domain.state import state_manager, VehicleState
 from src.application.services import call_api
@@ -42,13 +41,6 @@ def attach(app):
     """Attaches this router to the main FastAPI application."""
     app.include_router(router)
 
-def sanitize_float(value: Any) -> Any:
-    """Sanitize float values to ensure JSON compatibility."""
-    if isinstance(value, float):
-        if math.isnan(value) or math.isinf(value):
-            return None
-    return value
-
 @router.get("/vehicle_data")
 async def vehicle_data(
     state: VehicleState = Depends(get_current_vehicle_state),
@@ -57,21 +49,21 @@ async def vehicle_data(
     snap = await state.snapshot()
     resp = {
         "charge_state": {
-            "battery_level": sanitize_float(snap.get("charge_level")),
+            "battery_level": snap.get("charge_level"),
             "charging_state": snap.get("charging_state"),
-            "charge_current_request": sanitize_float(snap.get("charge_current")),
-            "charge_limit_soc": sanitize_float(snap.get("charge_limit")),
+            "charge_current_request": snap.get("charge_current"),
+            "charge_limit_soc": snap.get("charge_limit"),
             "charge_port_door_open": snap.get("charge_flap"),
-            "battery_range": sanitize_float(
+            "battery_range": (
                 snap.get("battery_range")
                 or snap.get("range")
                 or snap.get("est_range")
-                or 0
+                or 0.0
             ),
         },
         "climate_state": {
-            "inside_temp": sanitize_float(snap.get("interior")),
-            "outside_temp": sanitize_float(snap.get("exterior")),
+            "inside_temp": snap.get("interior"),
+            "outside_temp": snap.get("exterior"),
             "is_auto_conditioning_on": snap.get("climate"),
         },
     }

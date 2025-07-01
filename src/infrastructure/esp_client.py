@@ -1,4 +1,4 @@
-import asyncio, logging, aioesphomeapi
+import asyncio, logging, aioesphomeapi, math
 from typing import Any, Callable
 from src.domain.state import state_manager
 from src.config.settings import Vehicle
@@ -14,6 +14,10 @@ async def run(vehicle: Vehicle, publish: Callable[[str, str, str], None]):
     vehicle_state = await state_manager.get_vehicle_state(vehicle.vin)
 
     async def state_cb(msg):
+        # Ignore NaN states to keep last known value
+        if isinstance(msg.state, float) and math.isnan(msg.state):
+            logger.debug("Ignoring NaN state for %s: %s", vehicle.vin, msg.key)
+            return
         await vehicle_state.set(msg.key, msg.state)
         ent = vehicle_state.entities.get(msg.key)
         if ent and getattr(ent, "object_id", None):
