@@ -43,35 +43,39 @@ def attach(app):
 
 @router.get("/vehicle_data")
 async def vehicle_data(
+    vin: str = Depends(validate_vin),
     state: VehicleState = Depends(get_current_vehicle_state),
     endpoints: Optional[str] = Query(None)
 ):
+    """
+    Provides vehicle data, specifically tailored for EVCC compatibility.
+    It returns a minimal charge_state payload and mimics the double-nested
+    response structure of TeslaBleHttpProxy.
+    """
     snap = await state.snapshot()
-    resp = {
-        "charge_state": {
-            "battery_level": snap.get("charge_level"),
-            "charging_state": snap.get("charging_state"),
-            "charge_current_request": snap.get("charge_current"),
-            "charge_limit_soc": snap.get("charge_limit"),
-            "charge_port_door_open": snap.get("charge_flap"),
-            "battery_range": (
-                snap.get("battery_range")
-                or snap.get("range")
-                or snap.get("est_range")
-                or 0.0
-            ),
-        },
-        "climate_state": {
-            "inside_temp": snap.get("interior"),
-            "outside_temp": snap.get("exterior"),
-            "is_auto_conditioning_on": snap.get("climate"),
-        },
-    }
-    if endpoints:
-        wanted = {e.strip() for e in endpoints.split(',')}
-        resp = {k: v for k, v in resp.items() if k in wanted}
-    return fleet_resp(resp)
 
+    # Minimal payload for EVCC compatibility, based on the provided template
+    charge_state_payload = {
+        "battery_level": snap.get("charge_level") or 0.0,
+        "charge_limit_soc": snap.get("charge_limit") or 0.0,
+        "battery_range": snap.get("range") or 0.0,
+        "charging_state": snap.get("charging_state") or "Disconnected",
+    }
+
+    # evcc always requests the 'charge_state' endpoint.
+    inner_payload = {"charge_state": charge_state_payload}
+
+    # Mimic TeslaBleHttpProxy's full response structure for evcc
+    inner_response_obj = {
+        "response": inner_payload,
+        "result": True,
+        "reason": "OK",
+        "command": "vehicle_data",
+        "vin": vin,
+    }
+
+    # The final JSON has another "response" wrapper, as expected by the evcc jq filter
+    return {"response": inner_response_obj}
 
 @router.get("/body_controller_state")
 async def body_state(state: VehicleState = Depends(get_current_vehicle_state)):
