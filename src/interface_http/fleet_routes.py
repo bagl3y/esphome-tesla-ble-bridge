@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter, Body, Query, HTTPException, Request, Depends
+from fastapi.encoders import jsonable_encoder
 from src.domain.state import state_manager, VehicleState
 from src.application.services import call_api
 from src.config.settings import load as load_settings
@@ -159,4 +160,21 @@ async def get_state(name: str, state: VehicleState = Depends(get_current_vehicle
 
 @router.get("/entities")
 async def list_entities(state: VehicleState = Depends(get_current_vehicle_state)):
-    return state.entities
+    entities_with_values = {}
+    for entity_id, entity_info in state.entities.items():
+        # entity_info can be of various types from aioesphomeapi, use jsonable_encoder
+        entity_dict = jsonable_encoder(entity_info)
+        object_id = entity_dict.get("object_id")
+        val = None
+        if object_id:
+            val = await state.get(object_id)
+            if val is None:
+                # If not found, try to look up via object_id as a fallback
+                if object_id in state.oid2key:
+                    key = state.oid2key[object_id]
+                    val = await state.get(key)
+
+        entity_dict["value"] = val
+        entities_with_values[entity_id] = entity_dict
+
+    return entities_with_values
