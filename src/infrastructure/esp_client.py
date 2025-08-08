@@ -6,7 +6,9 @@ import contextlib
 
 logger = logging.getLogger(__name__)
 
-ENTITY_MAP = {"battery_level": "soc", "connected": "connected", "charging": "charging"}
+# Map internal entity keys to external publish topics/labels
+# Keep aligned with actual keys coming from ESPHome entities
+ENTITY_MAP = {"charge_level": "soc", "connected": "connected", "charging": "charging"}
 
 async def run(vehicle: Vehicle, publish: Callable[[str, str, str], None]):
     
@@ -14,19 +16,64 @@ async def run(vehicle: Vehicle, publish: Callable[[str, str, str], None]):
     vehicle_state = await state_manager.get_vehicle_state(vehicle.vin)
 
     async def state_cb(msg):
-        # Ignore NaN states to keep last known value
-        if isinstance(msg.state, float) and math.isnan(msg.state):
-            logger.debug("Ignoring NaN state for %s: %s", vehicle.vin, msg.key)
+        """Normalize incoming ESPHome state messages and update local state.
+
+        Some message types (e.g., CoverState) do not expose a "state" attribute.
+        We derive a representative value when possible.
+        """
+        # Prefer "state" when available; fallback to commonly used fields.
+        value = getattr(msg, "state", None)
+
+        if value is None:
+            # Handle covers and similar entities that report "position" or operation.
+            if hasattr(msg, "position"):
+                value = getattr(msg, "position")
+            elif hasattr(msg, "current_operation"):
+                value = getattr(msg, "current_operation")
+            elif hasattr(msg, "brightness"):
+                value = getattr(msg, "brightness")
+            else:
+                # As a last resort, keep a debug-friendly representation
+                value = None
+
+        # Additional booleans commonly found in device classes
+        if value is None and hasattr(msg, "is_closed"):
+            # Represent covers as True when open, False when closed
+            try:
+                value = not bool(getattr(msg, "is_closed"))
+            except Exception:
+                value = None
+        if value is None and hasattr(msg, "is_on"):
+            try:
+                value = bool(getattr(msg, "is_on"))
+            except Exception:
+                value = None
+
+        # Ignore NaN numeric values to keep last known value
+        if isinstance(value, float) and math.isnan(value):
+            logger.debug("Ignoring NaN state for %s: %s", vehicle.vin, getattr(msg, "key", "?"))
             return
-        await vehicle_state.set(msg.key, msg.state)
+
+        # Persist the normalized value under the numeric key
+        await vehicle_state.set(msg.key, value)
+
+        # Also persist under object_id when available for easier lookups
         ent = vehicle_state.entities.get(msg.key)
         if ent and getattr(ent, "object_id", None):
-            await vehicle_state.set(ent.object_id, msg.state)
+            await vehicle_state.set(ent.object_id, value)
+
+        # Optional publishing for whitelisted keys
         s = ENTITY_MAP.get(msg.key)
-        if s:
-            # Pass VIN to publish function
-            publish(vehicle.vin, s, str(msg.state))
-        logger.debug("State update for %s: %s = %s", vehicle.vin, msg.key, msg.state)
+        if s is not None:
+            publish(vehicle.vin, s, str(value))
+
+        logger.debug(
+            "State update for %s: key=%s class=%s value=%s",
+            vehicle.vin,
+            getattr(msg, "key", "?"),
+            msg.__class__.__name__,
+            value,
+        )
 
     while True:
         client = None
